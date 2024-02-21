@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Web Component Tester</title>
+	<script type="module" src="src/wijit-tester.js"></script>
+	<style>
+		body {
+			font-family: sans-serif;
+			font-size: 16px;
+		}
+
+		header h1,
+		header h3
+		{ display: inline-block }
+	</style>
+</head>
+<body>
+	<header>
+		<h1>Wijit Tester</h1>
+		<h3>A web component test runner</h3>
+	</header>
+	<wijit-tester
+		path="/extra/test-component.js"
+		module="TestComponent"
+		tag="test-component"
+		only-errors="false"
+		use-console="false">
+	</wijit-tester>
+</body>
+</html>
