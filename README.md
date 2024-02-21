@@ -1,6 +1,6 @@
 # Wijit-Tester Web Component
 
-A custom element for running unit and integration test on web components.
+A test runner for web components.
 
 ## Work in Progress
 
