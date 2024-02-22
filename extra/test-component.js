@@ -1,3 +1,5 @@
+import {TestClass, testFunction} from './test-exports.js';
+
 export class TestComponent extends HTMLElement {
 	#bool = true;
 	#str = 'a string';
@@ -38,6 +40,34 @@ export class TestComponent extends HTMLElement {
 
 	attributeChangedCallback (attr, oldval, newval) {
 		this[attr] = newval;
+	}
+
+	/**
+	 * [testClassImport description]
+	 * @return {String} Should return 'Baz'
+	 *
+	 * @test self.testClassImport() // 'Baz'
+	 * @test (self => {
+	 		return async function (self) {
+		 		const mods = await import ('../extra/test-exports.js');
+				return new mods.TestClass().getBaz()
+	 		}()
+	   })(self) // 'Baz'
+	 */
+	testClassImport () {
+		const testClass = new TestClass();
+		return testClass.getBaz();
+	}
+
+	/**
+	 * [testFunctionImport description]
+	 * @param  {String} arg A string
+	 * @return {String}     Should return 'testFunction_' + arg;
+	 *
+	 * @test self.testFunctionImport('foo') // 'testFunction_foo'
+	 */
+	testFunctionImport (arg) {
+		return testFunction(arg);
 	}
 
 	/**
@@ -106,11 +136,11 @@ export class TestComponent extends HTMLElement {
 	 * Creates an HTML div element and returns it
 	 * @return {HTMLElement} A div element
 	 *
-	 * @test self.isElement() instanceof HTMLElement // true
+	 * @test self.isElem('div') // HTMLDivElement
+	 * @test self.isElem('foo-bar') instanceof HTMLElement // true
 	 */
-	isElement () {
-		const elem = document.createElement ('div');
-		return elem;
+	isElem (value) {
+		return document.createElement (value);
 	}
 
 	/**
@@ -189,8 +219,9 @@ export class TestComponent extends HTMLElement {
 	 * Sets the value of elem
 	 * @param  {HTMLElement} value An HTML element
 	 * @test (self => {
-	 		return document.createElement('div');
-	 	})(self) // document.createElement('div')
+	 		self.elem = 'div';
+	 		return self.elem instanceof HTMLDivElement;
+	 	})(self) // document.createElement('div') instanceof HTMLDivElement
 	 */
 	set elem (value) {
 		if (typeof value === 'string') {

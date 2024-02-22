@@ -6,15 +6,38 @@
 	<title>Web Component Tester</title>
 	<script type="module" src="src/wijit-tester.js"></script>
 	<style>
+		html,
 		body {
+			height: 100%;
+		}
+		body {
+			--bg-color: white;
+			--text-color: rgb(40,40,40);
+
+			background-color: var(--bg-color);
+			color: var(--text-color);
 			font-family: sans-serif;
 			font-size: 16px;
+			margin: 0;
+		}
+
+		@media (prefers-color-scheme: dark) {
+			body {
+				--bg-color: rgb(40,40,40);
+				--text-color: whitesmoke;
+			}
+		}
+
+		header {
+			height: 75px;
+			padding: 0 1rem;
 		}
 
 		header h1,
 		header h3
 		{ display: inline-block }
 	</style>
+
 </head>
 <body>
 	<header>
@@ -26,7 +49,14 @@
 		module="TestComponent"
 		tag="test-component"
 		only-errors="false"
+		line-numbers="true"
+		stop-on-error="false"
 		use-console="false">
+		{
+			"attributes": []
+		}
 	</wijit-tester>
+
+
 </body>
 </html>

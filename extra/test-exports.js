@@ -1,12 +1,16 @@
-export class TestTwo extends HTMLElement {
+export function testFunction (arg) {
+	return `testFunction_${arg}`;
+}
+
+export class TestClass {
 	#elem;
 
 	constructor() {
-		super();
+		return this;
 	}
 
-	connectedCallback() {
-		// console.log('Test2 connected');
+	getBaz () {
+		return 'Baz';
 	}
 
 	/**
@@ -34,5 +38,3 @@ export class TestTwo extends HTMLElement {
 
 	}
 }
-
-document.addEventListener('DOMContentLoaded', customElements.define('test-two', TestTwo));
