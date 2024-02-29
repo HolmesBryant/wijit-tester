@@ -11,7 +11,9 @@ export class TestComponent extends HTMLElement {
 	 * Description of someProperty
 	 * @type {String}
 	 *
-	 * @test (self => {self.someProperty = 'other value'; return self.someProperty})(self) // 'other value'
+	 * @test self.someProperty = 'other value';
+	 		 return self.someProperty;
+	 	 	 // 'other value'
 	 */
 	someProperty = 'some value';
 	static observerAttributes = ['bool', 'str', 'foo', 'elem', 'num'];
@@ -43,20 +45,29 @@ export class TestComponent extends HTMLElement {
 	}
 
 	/**
-	 * [testClassImport description]
-	 * @return {String} Should return 'Baz'
-	 *
-	 * @test self.testClassImport() // 'Baz'
-	 * @test (self => {
-	 		return async function (self) {
-		 		const mods = await import ('../extra/test-exports.js');
-				return new mods.TestClass().getBaz()
-	 		}()
-	   })(self) // 'Baz'
+	 * An async function
+	 * test self.asyncFunction () // 'testFunction_foo';
+	 * test self.asyncFunction () instanceof Promise // true
 	 */
-	testClassImport () {
-		const testClass = new TestClass();
-		return testClass.getBaz();
+	async asyncFunction () {
+		const imports = await import ('./test-exports.js');
+		return imports.testFunction ('foo');
+	}
+
+	/**
+	 * Creates a new instance of TestClass
+	 * @return {String} Should return an instance of TestClass
+	 * @remarks This method instanciates a new TestClass which was imported via an import statement at first line of the file.
+	 *
+	 * The test function doesn't have access to TestClass so we have to import it.
+	 * @test fn = async () => {
+	         const mods = await import ('../extra/test-exports.js');
+	         return self.newInstance() instanceof mods.TestClass;
+	    };
+	    return fn(self); // true
+	 */
+	newInstance () {
+		return new TestClass();
 	}
 
 	/**
@@ -64,7 +75,7 @@ export class TestComponent extends HTMLElement {
 	 * @param  {String} arg A string
 	 * @return {String}     Should return 'testFunction_' + arg;
 	 *
-	 * @test self.testFunctionImport('foo') // 'testFunction_foo'
+	 * @test self.testFunctionImport ('foo') // 'testFunction_foo'
 	 */
 	testFunctionImport (arg) {
 		return testFunction(arg);
@@ -75,7 +86,7 @@ export class TestComponent extends HTMLElement {
 	 * @param  {NodeList} nodeList A node list
 	 * @return {NodeList}          The node list
 	 *
-	 * @test self.doBar(self.childNodes) instanceof NodeList // true
+	 * @test self.doBar (self.childNodes) instanceof NodeList // true
 	 */
 	doBar (nodeList) {
 		for (const node of nodeList) {
@@ -90,10 +101,10 @@ export class TestComponent extends HTMLElement {
 	 * @param  {Boolean}  value A Boolean
 	 * @return {Boolean}       	The Boolean
 	 *
-	 * @test typeof self.isBool('true') === 'boolean' // true
-	 * @test self.isBool('true') // true
-	 * @test self.isBool('false') // true
-	 * @test self.isBool(false) // false
+	 * @test typeof self.isBool ('true') === 'boolean' // true
+	 * @test self.isBool ('true') // true
+	 * @test self.isBool ('false') // true
+	 * @test self.isBool (false) // false
 	 */
 	isBool (value) {
 		return !!value;
@@ -104,7 +115,7 @@ export class TestComponent extends HTMLElement {
 	 * @param  {String}  value 	A string
 	 * @return {String}       	The string
 	 *
-	 * @test typeof self.isString('foo') === 'string' // true
+	 * @test typeof self.isString ('foo') === 'string' // true
 	 */
 	isString (value) {
 		return '' + value;
@@ -115,7 +126,7 @@ export class TestComponent extends HTMLElement {
 	 * @param  {Any} value Any value
 	 * @return {null}
 	 *
-	 * @test self.failsTest() // !null
+	 * @test self.failsTest () // !null
 	 */
 	failsTest (value) {
 		return null;
@@ -126,7 +137,7 @@ export class TestComponent extends HTMLElement {
 	 * @param  {String}  value 	A string
 	 * @return {String}       	The string
 	 *
-	 * @test self.isFoo() // 'foo'
+	 * @test self.isFoo () // 'foo'
 	 */
 	isFoo () {
 		return 'foo';
@@ -136,8 +147,8 @@ export class TestComponent extends HTMLElement {
 	 * Creates an HTML div element and returns it
 	 * @return {HTMLElement} A div element
 	 *
-	 * @test self.isElem('div') // HTMLDivElement
-	 * @test self.isElem('foo-bar') instanceof HTMLElement // true
+	 * @test self.isElem ('div') instanceof HTMLDivElement // true
+	 * @test self.isElem ('foo-bar') instanceof HTMLElement // true
 	 */
 	isElem (value) {
 		return document.createElement (value);
@@ -148,9 +159,9 @@ export class TestComponent extends HTMLElement {
 	 * @param  {Number}  value 	A number
 	 * @return {Number}       	The number
 	 *
-	 * @test self.isNumber(1) // 1
-	 * @test self.isNumber('1') // 1
-	 * @test isNaN(self.isNumber('foo')) // true
+	 * @test self.isNumber (1) // 1
+	 * @test self.isNumber ('1') // 1
+	 * @test isNaN (self.isNumber ('foo') ) // true
 	 */
 	isNumber (value) {
 		return parseFloat(value);
@@ -168,10 +179,9 @@ export class TestComponent extends HTMLElement {
 	 * Sets the value of bool
 	 * @param  {Boolean} value A boolean value
 	 *
-	 * @test (self => {
-	 		self.bool = true;
-	 		return typeof self.bool === 'boolean';
-	 	}) (self) // true
+	 * @test self.bool = true;
+	 		 return typeof self.bool === 'boolean';
+	 		 // true
 	 */
 	set bool (value) { this.#bool = value; }
 
@@ -187,7 +197,9 @@ export class TestComponent extends HTMLElement {
 	 * Sets the value of str
 	 * @param  {String} value A string
 	 *
-	 * @test (self => { self.str = 'bar'; return self.str })(self) // 'bar'
+	 * @test self.str = 'bar';
+	   		 return self.str;
+	   		 // 'bar'
 	 */
 	set str (value) { this.#str = value; }
 
@@ -203,7 +215,9 @@ export class TestComponent extends HTMLElement {
 	 * Sets the value of foo
 	 * @param  {String} value This should be 'foo';
 	 *
-	 * @test (self => { self.foo = 'bar'; return self.foo})(self) // 'foo'
+	 * @test self.foo = 'bar';
+			 return self.foo;
+			 // 'foo'
 	 */
 	set foo (value) { this.#foo = value; }
 
@@ -218,10 +232,9 @@ export class TestComponent extends HTMLElement {
 	/**
 	 * Sets the value of elem
 	 * @param  {HTMLElement} value An HTML element
-	 * @test (self => {
-	 		self.elem = 'div';
-	 		return self.elem instanceof HTMLDivElement;
-	 	})(self) // document.createElement('div') instanceof HTMLDivElement
+	 * @test self.elem = 'div';
+	 		 return self.elem instanceof HTMLDivElement;
+	 		 // document.createElement ('div') instanceof HTMLDivElement
 	 */
 	set elem (value) {
 		if (typeof value === 'string') {
@@ -243,15 +256,16 @@ export class TestComponent extends HTMLElement {
 	 * Sets the value of num
 	 * @param  {Number} value A number
 	 *
-	 * @test (self => {self.num = 9; return self.num; })(self) // 9
-	 * @test (self => {self.num = 9.5; return typeof self.num === 'number'; })(self) // true
-	 * @test (self => {self.num = 'foo'; return self.num; })(self) // NaN
+	 * @test self.num = 9; return self.num; // 9
+	 * @test self.num = 9.5; return typeof self.num === 'number'; // true
+	 * @test self.num = 'foo'; return isNaN(self.num); // true
+	 * @test self.num = '20'; return self.num;
 	 */
 	set num (value) {
 		if (typeof value === 'number' && !isNaN(value)) {
 			this.#num = value;
 		} else {
-			this.#elem = parseFloat(value);
+			this.#num = parseFloat(value);
 		}
 	}
 }

@@ -4,6 +4,10 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>Web Component Tester</title>
+	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="manifest" href="/site.webmanifest">
 	<script type="module" src="src/wijit-tester.js"></script>
 	<style>
 		html,
@@ -29,13 +33,17 @@
 		}
 
 		header {
-			height: 75px;
+			min-height: 75px;
 			padding: 0 1rem;
 		}
 
 		header h1,
 		header h3
-		{ display: inline-block }
+		{
+			display: inline-block;
+			margin: 0;
+		}
+
 	</style>
 
 </head>
@@ -44,6 +52,7 @@
 		<h1>Wijit Tester</h1>
 		<h3>A web component test runner</h3>
 	</header>
+
 	<wijit-tester
 		path="/extra/test-component.js"
 		module="TestComponent"
@@ -53,10 +62,12 @@
 		stop-on-error="false"
 		use-console="false">
 		{
-			"attributes": []
+			"modules": [
+				"/extra/test-component.js",
+				"/extra/test-exports.js"
+			]
 		}
 	</wijit-tester>
-
 
 </body>
 </html>
