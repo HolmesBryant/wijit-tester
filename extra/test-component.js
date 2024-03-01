@@ -30,6 +30,7 @@ export class TestComponent extends HTMLElement {
 			<article>
 				<header><slot name="title"></slot></header>
 				<div><slot></slot></div>
+				<p>${this.str}</p>
 			</article>
 		`;
 	}

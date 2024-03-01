@@ -51,6 +51,7 @@ export class WijitTester extends HTMLElement {
 	errorEvent = 'testError';
 	failEvent = 'testFailed';
 	passEvent = 'testPassed';
+	scriptLoadedEvent = 'scriptLoaded';
 
 	/**
      * (Private) Flag indicating if line numbers should be shown.
@@ -144,15 +145,16 @@ export class WijitTester extends HTMLElement {
 		this.shadowRoot.innerHTML = `
 			<style>
 				:host {
+					--accent-color: turquoise;
 					--bg1-color: whitesmoke;
 					--bg2-color: white;
 					--bg3-color: gainsboro;
-					--trans-color: rgba(255,255,255,0.9);
 					--border-color: silver;
-					--text-color: rgb(60,60,60);
+					--error-color: hotpink;
 					--fail-color: pink;
 					--pass-color: palegreen;
-					--accent-color: turquoise;
+					--text-color: rgb(60,60,60);
+					--trans-color: rgba(255,255,255,0.9);
 					--minheight: 35px;
 
 					background-color: var(--bg1-color);
@@ -172,11 +174,11 @@ export class WijitTester extends HTMLElement {
 						--bg2-color: rgb(40,40,40);
 						--bg3-color: rgb(60, 60, 60);
 						--border-color: dimgray;
-						--text-color: rgb(240, 240, 240);
-						--trans-color: rgba(40,40,40,0.7);
+						--error-color: darkred;
 						--pass-color: darkslategray;
 						--fail-color: firebrick;
-						--error-color: darkred;
+						--text-color: rgb(240, 240, 240);
+						--trans-color: rgba(40,40,40,0.7);
 					}
 				}
 
@@ -190,6 +192,8 @@ export class WijitTester extends HTMLElement {
 					{ background-color: var(--bg2-color) }
 
 					button,
+					*[title]:after,
+					*[title]::before,
 					input[type="file"]::file-selector-button
 					{ background-color: var(--bg3-color) }
 
@@ -227,13 +231,20 @@ export class WijitTester extends HTMLElement {
 					button,
 					input,
 					output,
+					*[title]::after,
+					*[title]::before,
 					input[type="file"]::file-selector-button
 					{ border: 1px solid var(--border-color); }
 
 					button,
 					output,
-					input
+					input,
+					*[title]::before
 					{ border-radius: 10px; }
+
+					*[title]::after {
+						border-radius: 50%;
+					}
 
 					output details:first-child summary {
 						border-radius: 10px 10px 0 0;
@@ -250,8 +261,12 @@ export class WijitTester extends HTMLElement {
 					svg
 					{ fill: var(--text-color); }
 
+					*[title]::after
+					{ color: var(--accent-color); }
+
 				/****** Cursors ******/
 					button,
+					label[title],
 					summary,
 					input[type="file"]::file-selector-button
 					{ cursor: pointer; }
@@ -278,6 +293,35 @@ export class WijitTester extends HTMLElement {
 					{ box-shadow: inset 2px 2px 5px black; }
 
 				/****** Structure ******/
+					*[data-tooltip] {
+						position: relative;
+					}
+
+					*[data-tooltip]::after {
+						aspect-ratio: 1/1;
+						content: "?";
+						display: inline;
+						padding: 2px;
+						z-index: 2;
+					}
+
+					*[data-tooltip]::before {
+						content: attr(title);
+						display: none;
+						font-weight: normal;
+						height: max-content;
+						max-width: 10rem;
+						padding: .25rem;
+						position: absolute;
+						right: 0;
+						top: 1rem;
+						z-index: 99;
+					}
+
+					*[data-tooltip]:hover::before,
+					*[data-tooltip]:active::before {
+						display: block;
+					}
 
 					article {
 						display: grid;
@@ -411,7 +455,13 @@ export class WijitTester extends HTMLElement {
 			<article>
 				<section class="row" id="inputs">
 						<div>
-							<label for="file-input">Path to Module</label>
+							<label
+							for="file-input"
+							data-tooltip="true"
+							title="Relative or absolute path to file containing exported module(s)"
+							>
+								Path to Module
+							</label>
 							<input required
 								value="${this.path}"
 								type="text"
@@ -423,7 +473,13 @@ export class WijitTester extends HTMLElement {
 						</div>
 
 						<div>
-							<label for="module-input">Module Name</label>
+							<label
+							for="module-input"
+							data-tooltip="true"
+							title="The name of the exported module. If it is the default export, enter 'default'"
+							>
+								Module Name
+							</label>
 							<input required
 								value="${this.module}"
 								type="text"
@@ -436,7 +492,13 @@ export class WijitTester extends HTMLElement {
 						</div>
 
 						<div>
-							<label for="tag-input">Tag Name</label>
+							<label
+							for="tag-input"
+							data-tooltip="true"
+							title="If this is a Custom Element, enter the tag name of the element"
+							>
+								Tag Name
+							</label>
 							<input
 							value="${this.tag}"
 							id="tag-input"
@@ -447,19 +509,19 @@ export class WijitTester extends HTMLElement {
 				</section>
 
 				<section class="sticky row" id="controls">
-					<button id="reload" class="hidden">
+					<button id="reload" class="hidden" title="Reload">
 						<svg class="icon">
 							<use xlink:href="#reload-icon"></use>
 						</svg>
 					</button>
 
-					<button id="start" type="submit" form="form">
+					<button id="start" type="submit" form="form" title="Start">
 						<svg class="icon">
 							<use xlink:href="#play-icon"></use>
 						</svg>
 					</button>
 
-					<button disabled id="pause">
+					<button disabled id="pause" title="Pause / Resume">
 						<svg class="icon">
 							<use xlink:href="#pause-icon"></use>
 						</svg>
@@ -513,6 +575,11 @@ export class WijitTester extends HTMLElement {
 			this.loadFullText (this.path);
 		}
 
+		// The main event. When the form is submitted via [Enter] or pressing the Start button, the process starts.
+		form.addEventListener ('submit', (event) => {
+			this.init (event);
+		}, { signal:this.abortController.signal });
+
 		fileInput.addEventListener ('focus', event => {
 			event.target.value = null;
 		}, { signal:this.abortController.signal });
@@ -531,7 +598,6 @@ export class WijitTester extends HTMLElement {
 			event.target.select();
 		}, { signal:this.abortController.signal });
 
-		form.addEventListener ('submit', (event) => this.init (event), { signal:this.abortController.signal });
 
 		this.pauseBtn.addEventListener ('click', () => this.pause (),
 			{ signal:this.abortController.signal });
@@ -548,7 +614,6 @@ export class WijitTester extends HTMLElement {
 			this.addResult(event)
 			if (this.stopOnError) {
 				this.pause();
-				this.done();
 			}
 		}, { signal:this.abortController.signal });
 
@@ -556,7 +621,7 @@ export class WijitTester extends HTMLElement {
 			this.addResult(event)
 			if (this.stopOnError) {
 				this.pause();
-				this.done();
+				// this.done();
 			}
 			console.error (`Nope, not feelin it ... ${event.detail.result}`)
 			console.error (event.detail.description)
@@ -658,6 +723,9 @@ export class WijitTester extends HTMLElement {
 		const component = await this.loadModule (this.file, moduleName);
 		const script = document.createElement('script');
 		const tests = this.getTests (component);
+		const details = (this.lineNumbers) ? this.fullCode : component;
+		const evt = new CustomEvent(this.scriptLoadedEvent, { detail: details });
+		document.dispatchEvent(evt);
 
 		this.setup();
 		script.setAttribute('type', 'module');
@@ -740,7 +808,7 @@ export class WijitTester extends HTMLElement {
 			if (this.lineNumbers) line = this.getLineNum (regex, match[0], this.fullCode);
 
 			const expected = match[2].trim();
-			const func = this.funFactory(match[1].trim(), i, line, expected);
+			const func = match[1].trim();
 			if (! tests.has (func)) tests.set (func, new Set());
 			const item = tests.get (func);
 			item.add ([func, expected, line]);
@@ -749,18 +817,6 @@ export class WijitTester extends HTMLElement {
 
 		this.totalTests = i;
 		return tests;
-	}
-
-	funFactory (str, i, line, expected) {
-		let fn;
-		const regex = /\breturn\b/;
-		str = (regex.test(str)) ? str : 'return ' + str;
-		try {
-			fn = Function ('self', str);
-		} catch (error) {
-			this.sendError (error, str, i, line, expected)
-		}
-		return fn;
 	}
 
 	/**
@@ -1306,9 +1362,8 @@ export class WijitTestRunner {
 		if (reset) this.init ();
 
 		const self = this.instance;
-		// let desc = func.toString().replace(/function anonymous[^\{]+\{(\s*return)?|\}$/g, '');
-
-		let desc = func.toString();
+		let desc = func.toString().replace(/function anonymous[^\{]+\{(\s*return)?|\}$/g, '');
+		// let desc = func.toString();
 		desc += ` //  ${predicted}`;
 
 		this.getResult (func, desc, this.testNum, line)
@@ -1365,7 +1420,7 @@ export class WijitTestRunner {
 	getResult (func, description, idx, line) {
 		let result;
 		const self = this.instance;
-
+		func = this.funFactory (func, idx, line, description);
 		try {
 			result = func (self);
 		} catch (error) {
@@ -1376,11 +1431,25 @@ export class WijitTestRunner {
 	}
 
 	getExpected (predicted, description, idx, line) {
+		const self = this.instance;
+		const func = this.funFactory (predicted, idx, line, description);
 		try {
-			return Function('self', `return ${predicted}`)(this.instance);
+			return func (self)
 		} catch (error) {
 			this.sendError (error, description, idx, line, predicted);
 		}
+	}
+
+	funFactory (str, i, line, expected) {
+		let fn;
+		const regex = /\breturn\b/;
+		str = (regex.test(str)) ? str : 'return ' + str;
+		try {
+			fn = Function ('self', str);
+		} catch (error) {
+			this.sendError (error, str, i, line, expected)
+		}
+		return fn;
 	}
 
 	sendError (errorOrResult, description, idx, line, expected) {
