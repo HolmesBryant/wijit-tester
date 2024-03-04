@@ -2,7 +2,7 @@
  * @class WijitTester
  * @extends HTMLElement
  * @description A test runner for web components
- * @author Holmes Bryant <webbmaastaa@gmail.com>
+ * @author Holmes Bryant <https://github.com/HolmesBryant>
  * @license GPL-3.0
  */
 export class WijitTester extends HTMLElement {
@@ -383,7 +383,6 @@ export class WijitTester extends HTMLElement {
 					output {
 						display: block;
 						min-height: 100%;
-						overflow: visible;
 					}
 
 					progress {
@@ -405,8 +404,8 @@ export class WijitTester extends HTMLElement {
 
 					summary {
 						padding: .5rem;
-						white-space: preserve-space;
-						overflow: auto;
+						white-space: pre-line;
+						overflow-wrap: anywhere;
 					}
 
 					.hidden {
@@ -562,7 +561,6 @@ export class WijitTester extends HTMLElement {
 		this.progress = this.shadowRoot.querySelector('#progress');
 		this.currentNum = this.shadowRoot.querySelector('#current');
 		this.totalNum = this.shadowRoot.querySelector('#total');
-		this.progress = this.shadowRoot.querySelector('progress');
 		this.output = this.shadowRoot.querySelector('output');
 		const form = this.shadowRoot.querySelector('form');
 		const fileInput = this.shadowRoot.querySelector('#file-input');
@@ -570,9 +568,12 @@ export class WijitTester extends HTMLElement {
 		const tagInput = this.shadowRoot.querySelector('#tag-input');
 		const optionsContent = this.shadowRoot.querySelector('#options').assignedNodes()[0].textContent.trim();
 
+		this.checkForSearchQuery();
 		this.setupOptions(optionsContent);
+
 		if (this.path && this.lineNumbers) {
 			this.loadFullText (this.path);
+
 		}
 
 		// The main event. When the form is submitted via [Enter] or pressing the Start button, the process starts.
@@ -603,7 +604,10 @@ export class WijitTester extends HTMLElement {
 			{ signal:this.abortController.signal });
 
 		this.reloadBtn.addEventListener ('click', () => {
-			location.reload();
+			// const moduleName = this.shadowRoot.querySelector('#module-input').value;
+			// const tag = this.tagName.toLowerCase();
+			// const query = encodeURI(`?path=${this.file}&module=${moduleName}&tag=${tag}`);
+			location.search = this.setSearchQuery();
 		}, { signal:this.reloadAbortController.signal });
 
 		this.addEventListener (this.passEvent, event => {
@@ -619,12 +623,9 @@ export class WijitTester extends HTMLElement {
 
 		this.addEventListener (this.errorEvent, event => {
 			this.addResult(event)
-			if (this.stopOnError) {
-				this.pause();
-				// this.done();
-			}
-			console.error (`Nope, not feelin it ... ${event.detail.result}`)
-			console.error (event.detail.description)
+				this.done();
+			console.error (`Nope, not feelin it ... (line: ${event.detail.line}) ${event.detail.description}`)
+			// console.error (`Nope, not feelin it ... ${event.detail.result}`)
 		}, { signal:this.abortController.signal });
 	}
 
@@ -643,19 +644,37 @@ export class WijitTester extends HTMLElement {
 	 * @param  {String} oldval The attribute's previous value
 	 * @param  {String} newval The attribute's new value
 	 */
-	attributeChangedCallback(attr, oldval, newval) {
+	attributeChangedCallback( attr, oldval, newval ) {
 		attr = attr.replace(/-./g, (match) => match.toUpperCase()[1]);
 		this[attr] = newval;
 	}
 
-	setupOptions(optionsContent) {
+	setSearchQuery() {
+		const moduleName = this.shadowRoot.querySelector('#module-input').value;
+		const tag = this.shadowRoot.querySelector('#tag-input').value;
+		return encodeURI(`?path=${this.file}&module=${moduleName}&tag=${tag}`);
+	}
+
+	checkForSearchQuery() {
+		if ( location.search ) {
+			const pathInput = this.shadowRoot.querySelector('#file-input');
+			const moduleInput = this.shadowRoot.querySelector('#module-input');
+			const tagInput = this.shadowRoot.querySelector('#tag-input')
+			const params = new URLSearchParams( location.search );
+			pathInput.value = params.get( 'path' );
+			this.path = params.get( 'path' );
+			moduleInput.value = params.get( 'module' );
+			tagInput.value = params.get( 'tag');
+		}
+	}
+
+	setupOptions( optionsContent ) {
 		try {
-			const options = JSON.parse (optionsContent);
+			const options = JSON.parse( optionsContent );
 			if (options.modules) {
 				this.addFileList (options.modules);
 			}
 		} catch (error) {
-			// console.error (error);
 			this.sendError (
 				error,
 				"Error Reading Options",
@@ -720,7 +739,10 @@ export class WijitTester extends HTMLElement {
 		const tag = event.target.tag.value;
 		this.file = event.target.file.value;
 		const moduleName = event.target.module.value;
-		const component = await this.loadModule (this.file, moduleName);
+		const path = location.pathname
+			.substring( 0, location.pathname.lastIndexOf('/') +1);
+		const importUrl = (path + this.file).replace( /\/{2,}/g, '/' );
+		const component = await this.loadModule (importUrl, moduleName);
 		const script = document.createElement('script');
 		const tests = this.getTests (component);
 		const details = (this.lineNumbers) ? this.fullCode : component;
@@ -731,7 +753,7 @@ export class WijitTester extends HTMLElement {
 		script.setAttribute('type', 'module');
 		script.textContent = `
 			import {WijitTestRunner} from '${import.meta.url}';
-		 	import {${moduleName} as component} from '${this.file}';
+		 	import {${moduleName} as component} from '${importUrl}';
 		 	window.WijitTestRunner = WijitTestRunner;
 		`;
 		this.shadowRoot.append(script);
@@ -806,7 +828,6 @@ export class WijitTester extends HTMLElement {
 
 		for (const match of matches) {
 			if (this.lineNumbers) line = this.getLineNum (regex, match[0], this.fullCode);
-
 			const expected = match[2].trim();
 			const func = match[1].trim();
 			if (! tests.has (func)) tests.set (func, new Set());
@@ -1240,6 +1261,8 @@ export class WijitTestRunner {
 		line: null
 	}
 
+	testSubject;
+
 	failEvent = 'testFailed';
 	passEvent = 'testPassed';
 	errorEvent = 'testError';
@@ -1363,7 +1386,6 @@ export class WijitTestRunner {
 
 		const self = this.instance;
 		let desc = func.toString().replace(/function anonymous[^\{]+\{(\s*return)?|\}$/g, '');
-		// let desc = func.toString();
 		desc += ` //  ${predicted}`;
 
 		this.getResult (func, desc, this.testNum, line)
