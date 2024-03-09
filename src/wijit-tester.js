@@ -15,6 +15,11 @@ export class WijitTester extends HTMLElement {
 	abortController = new AbortController();
 	reloadAbortController = new AbortController();
 
+	/**
+	 * The full text of the component being tested. This is populated when lineNumbers == true;
+	 * @private
+	 * @type {string}
+	 */
 	fullCode;
 
 	/**
@@ -22,6 +27,7 @@ export class WijitTester extends HTMLElement {
      *
      * @public
      * @readonly
+     * @type {string}
      */
 	testScriptId = 'wt_' + Math.random().toString(36).substring(2, 8);
 
@@ -30,6 +36,7 @@ export class WijitTester extends HTMLElement {
      *
      * @public
      * @readonly
+     * @type {number}
      */
 	totalTests = 0;
 
@@ -38,6 +45,7 @@ export class WijitTester extends HTMLElement {
      *
      * @public
      * @readonly
+     * @type {number}
      */
 	startTime;
 
@@ -45,25 +53,44 @@ export class WijitTester extends HTMLElement {
      * Flag indicating if testing is paused.
      *
      * @public
+     * @type {boolean}
      */
 	paused = false;
 
+	/**
+	 * Name of custom error event
+	 * @public
+	 * @type {String}
+	 */
 	errorEvent = 'testError';
+
+	/**
+	 * Name of custom "test failed" event
+	 * @public
+	 * @type {String}
+	 */
 	failEvent = 'testFailed';
+
+	/**
+	 * Name of custom "test passed" event
+	 * @public
+	 * @type {String}
+	 */
 	passEvent = 'testPassed';
-	scriptLoadedEvent = 'scriptLoaded';
 
 	/**
      * (Private) Flag indicating if line numbers should be shown.
      *
      * @private
+     * @type {boolean}
      */
 	#lineNumbers = false;
 
 	/**
-     * (Private) The module to test.
+     * (Private) The name of the module to test.
      *
      * @private
+     * @type {string}
      */
 	#module = '';
 
@@ -71,39 +98,43 @@ export class WijitTester extends HTMLElement {
      * (Private) Flag indicating if only errors should be shown.
      *
      * @private
+     * @type {boolean}
      */
 	#onlyErrors = false;
 
 	/**
-     * (Private) The path to test files.
-     *
-     * @private
-     */
-	#path = '';
-
+	 * The value of the "file" input, which is the path to the file being tested.
+	 * @private
+	 * @type {String}
+	 */
 	#file = '';
 
 	/**
-     * (Private) Flag indicating if testing should stop on error.
-     *
+     * Flag indicating if testing should stop on error.
      * @private
+     * @type {boolean}
      */
 	#stopOnError = false;
 
 	/**
-     * (Private) The custom tag name associated with the component.
-     *
+     * The custom tag name associated with the component.
      * @private
+     * @type {string}
      */
 	#tag = '';
 
 	/**
-     * (Private) Flag indicating if console output should be used.
-     *
+     * Flag indicating if console output should be used.
      * @private
+     * @type {boolean}
      */
 	#useConsole = false;
 
+	/**
+	 * Object serving as a template for error reporting
+	 * @private
+	 * @type {object}
+	 */
 	errorInfo = {
 		verdict : null,
 		expected : 'No error ... duh',
@@ -114,14 +145,15 @@ export class WijitTester extends HTMLElement {
 	}
 
 	/**
-     * List of observed attributes for this element.
-     *
-     * @public
-     * @static
-     * @readonly
-     */
+   * List of observed attributes for this element.
+   *
+   * @public
+   * @static
+   * @readonly
+   * @type {string[]}
+   */
 	static observedAttributes = [
-		'path',
+		'file',
 		'line-numbers',
 		'module',
 		'only-errors',
@@ -135,13 +167,13 @@ export class WijitTester extends HTMLElement {
 	 */
 	constructor () {
 		super();
-		this.attachShadow ({ mode:'open' });
-		this.path = this.getAttribute('path') || '';
-		this.module = this.getAttribute('module') || '';
-		this.tag = this.getAttribute('tag') || '';
-		this.stopOnError = this.getAttribute('stop-on-error') || this.stopOnError;
-		this.onlyErrors = this.getAttribute('only-errors') || this.onlyErrors;
-		this.useConsole = this.getAttribute('use-console') || this.useConsole;
+		this.attachShadow ( { mode:'open' } );
+		if ( this.hasAttribute( 'file' ) ) this.file = this.getAttribute( 'file' );
+		this.module = this.getAttribute( 'module' ) || '';
+		this.tag = this.getAttribute( 'tag' ) || '';
+		this.stopOnError = this.getAttribute( 'stop-on-error' ) || this.stopOnError;
+		this.onlyErrors = this.getAttribute( 'only-errors' ) || this.onlyErrors;
+		this.useConsole = this.getAttribute( 'use-console' ) || this.useConsole;
 		this.shadowRoot.innerHTML = `
 			<style>
 				:host {
@@ -210,6 +242,7 @@ export class WijitTester extends HTMLElement {
 					.pass
 					{ background-color: var(--pass-color); }
 
+					summary:hover,
 					.active
 					{ background-color: var(--accent-color); }
 
@@ -462,7 +495,7 @@ export class WijitTester extends HTMLElement {
 								Path to Module
 							</label>
 							<input required
-								value="${this.path}"
+								value="${this.file}"
 								type="text"
 								id="file-input"
 								list="file-datalist"
@@ -545,9 +578,10 @@ export class WijitTester extends HTMLElement {
 				<slot id="options"></slot>
 			</div>
 		`;
-		const progressContainer = this.shadowRoot.querySelector('#progress-container');
-		if (this.useConsole) {
-			progressContainer.classList.add('hidden');
+
+		const progressContainer = this.shadowRoot.querySelector( '#progress-container' );
+		if ( this.useConsole ) {
+			progressContainer.classList.add( 'hidden' );
 		}
 	}
 
@@ -555,26 +589,19 @@ export class WijitTester extends HTMLElement {
   	 * Called when the element is inserted into the DOM.
   	 */
 	connectedCallback () {
-		this.startBtn = this.shadowRoot.querySelector('#start');
-		this.pauseBtn = this.shadowRoot.querySelector('#pause');
-		this.reloadBtn = this.shadowRoot.querySelector('#reload');
-		this.progress = this.shadowRoot.querySelector('#progress');
-		this.currentNum = this.shadowRoot.querySelector('#current');
-		this.totalNum = this.shadowRoot.querySelector('#total');
-		this.output = this.shadowRoot.querySelector('output');
-		const form = this.shadowRoot.querySelector('form');
-		const fileInput = this.shadowRoot.querySelector('#file-input');
-		const moduleinput = this.shadowRoot.querySelector('#module-input');
-		const tagInput = this.shadowRoot.querySelector('#tag-input');
-		const optionsContent = this.shadowRoot.querySelector('#options').assignedNodes()[0].textContent.trim();
-
+		const pauseBtn = this.shadowRoot.querySelector( '#pause' );
+		const reloadBtn = this.shadowRoot.querySelector( '#reload' );
+		const form = this.shadowRoot.querySelector( 'form' );
+		const fileInput = this.shadowRoot.querySelector( '#file-input' );
+		const moduleinput = this.shadowRoot.querySelector( '#module-input' );
+		const tagInput = this.shadowRoot.querySelector( '#tag-input' );
+		// const optionsContent = this.shadowRoot.querySelector( '#options' ).assignedNodes()[0].textContent.trim();
+		const optionsContent = this.textContent;
 		this.checkForSearchQuery();
-		this.setupOptions(optionsContent);
+		this.setupOptions( optionsContent );
 
-		if (this.path && this.lineNumbers) {
-			this.loadFullText (this.path);
-
-		}
+		if (form.file.value) this.file = form.file.value;
+		if ( this.lineNumbers ) this.loadFullText (this.file);
 
 		// The main event. When the form is submitted via [Enter] or pressing the Start button, the process starts.
 		form.addEventListener ('submit', (event) => {
@@ -599,14 +626,10 @@ export class WijitTester extends HTMLElement {
 			event.target.select();
 		}, { signal:this.abortController.signal });
 
-
-		this.pauseBtn.addEventListener ('click', () => this.pause (),
+		pauseBtn.addEventListener ('click', () => this.pause (),
 			{ signal:this.abortController.signal });
 
-		this.reloadBtn.addEventListener ('click', () => {
-			// const moduleName = this.shadowRoot.querySelector('#module-input').value;
-			// const tag = this.tagName.toLowerCase();
-			// const query = encodeURI(`?path=${this.file}&module=${moduleName}&tag=${tag}`);
+		reloadBtn.addEventListener ('click', () => {
 			location.search = this.setSearchQuery();
 		}, { signal:this.reloadAbortController.signal });
 
@@ -622,10 +645,9 @@ export class WijitTester extends HTMLElement {
 		}, { signal:this.abortController.signal });
 
 		this.addEventListener (this.errorEvent, event => {
-			this.addResult(event)
-				this.done();
+			this.addResult(event);
+			this.done();
 			console.error (`Nope, not feelin it ... (line: ${event.detail.line}) ${event.detail.description}`)
-			// console.error (`Nope, not feelin it ... ${event.detail.result}`)
 		}, { signal:this.abortController.signal });
 	}
 
@@ -652,7 +674,7 @@ export class WijitTester extends HTMLElement {
 	setSearchQuery() {
 		const moduleName = this.shadowRoot.querySelector('#module-input').value;
 		const tag = this.shadowRoot.querySelector('#tag-input').value;
-		return encodeURI(`?path=${this.file}&module=${moduleName}&tag=${tag}`);
+		return encodeURI(`?file=${this.file}&module=${moduleName}&tag=${tag}`);
 	}
 
 	checkForSearchQuery() {
@@ -661,8 +683,8 @@ export class WijitTester extends HTMLElement {
 			const moduleInput = this.shadowRoot.querySelector('#module-input');
 			const tagInput = this.shadowRoot.querySelector('#tag-input')
 			const params = new URLSearchParams( location.search );
-			pathInput.value = params.get( 'path' );
-			this.path = params.get( 'path' );
+			pathInput.value = params.get( 'file' );
+			this.file = params.get( 'file' );
 			moduleInput.value = params.get( 'module' );
 			tagInput.value = params.get( 'tag');
 		}
@@ -685,7 +707,7 @@ export class WijitTester extends HTMLElement {
 		}
 	}
 
-	addFileList (files = []) {
+	addFileList( files = [] ) {
 		files = files.flat();
 		const filelist = this.shadowRoot.querySelector('#file-datalist');
 		const host = location.host;
@@ -696,7 +718,7 @@ export class WijitTester extends HTMLElement {
 		}
 	}
 
-	async addModuleList (path) {
+	async addModuleList( path ) {
 		const modlist = this.shadowRoot.querySelector('#module-datalist');
 		try {
 			const mods = await import (path);
@@ -732,32 +754,16 @@ export class WijitTester extends HTMLElement {
  	 *
  	 * @param {Event} event The submit event from the form.
  	 */
-	async init (event) {
+	async init( event ) {
 		event.preventDefault();
-		this.startBtn.classList.add('hidden');
 		this.startTime = Date.now();
-		const tag = event.target.tag.value;
 		this.file = event.target.file.value;
+		const tag = event.target.tag.value;
 		const moduleName = event.target.module.value;
-		const path = location.pathname
-			.substring( 0, location.pathname.lastIndexOf('/') +1);
-		const importUrl = (path + this.file).replace( /\/{2,}/g, '/' );
-		const component = await this.loadModule (importUrl, moduleName);
-		const script = document.createElement('script');
-		const tests = this.getTests (component);
-		const details = (this.lineNumbers) ? this.fullCode : component;
-		const evt = new CustomEvent(this.scriptLoadedEvent, { detail: details });
-		document.dispatchEvent(evt);
-
+		const component = await this.loadModule( this.file, moduleName );
+		const tests = this.getTests( component );
 		this.setup();
-		script.setAttribute('type', 'module');
-		script.textContent = `
-			import {WijitTestRunner} from '${import.meta.url}';
-		 	import {${moduleName} as component} from '${importUrl}';
-		 	window.WijitTestRunner = WijitTestRunner;
-		`;
-		this.shadowRoot.append(script);
-		this.initTestRunner (tests, tag);
+		this.initTestRunner( tests, tag );
 	}
 
 	/**
@@ -772,7 +778,7 @@ export class WijitTester extends HTMLElement {
  	 * @returns {Promise<any>} A promise that resolves with the extracted component or rejects with an error.
  	 *
  	 */
-	async loadModule (url, moduleName) {
+	async loadModule( url, moduleName ) {
 		try {
 			const response = await import (url);
 			const component = response[moduleName];
@@ -789,7 +795,7 @@ export class WijitTester extends HTMLElement {
 		}
 	}
 
-	async loadFullText (url) {
+	async loadFullText( url ) {
 		try {
 			const response = await fetch (url);
 			this.fullCode = await response.text();
@@ -819,7 +825,7 @@ export class WijitTester extends HTMLElement {
  	 *
  	 * @test self.getTests(self).size // 8
  	 */
-	getTests (component) {
+	getTests( component ) {
 		let i = 0, line = null;
 		const tests = new Map();
 		const regex = /\*\s+@test([\s\S]*?)\/\/\s+([^\n]*)/g;
@@ -845,12 +851,16 @@ export class WijitTester extends HTMLElement {
  	 *
  	 * This method updates the UI elements to reflect the number of tests and disables/enables buttons accordingly.
  	 */
-	setup () {
+	setup() {
+		const startBtn = this.shadowRoot.querySelector('#start');
+		const pauseBtn = this.shadowRoot.querySelector('#pause');
 		const totalContainer = this.shadowRoot.querySelector('#total');
+		const progress = this.shadowRoot.querySelector('#progress');
 		totalContainer.textContent = this.totalTests;
-		this.progress.setAttribute('max', this.totalTests);
-		this.startBtn.disabled = true;
-		this.pauseBtn.disabled = false;
+		progress.setAttribute('max', this.totalTests);
+		startBtn.classList.add( 'hidden' );
+		startBtn.disabled = true;
+		pauseBtn.disabled = false;
 	}
 
 	/**
@@ -864,35 +874,11 @@ export class WijitTester extends HTMLElement {
  	 *
  	 * @test self.initTestRunner(new Map([[]]), 'wijit-tester') instanceof WijitTestRunner // true
  	 */
-	initTestRunner (tests, tag) {
-		let i = 1, tester, interval;
-		if (window.WijitTestRunner) {
-			tester = new WijitTestRunner (tests, tag, this);
-			tester.useConsole = this.useConsole;
-			tester.onlyErrors = this.onlyErrors;
-			this.startTests (tests, tester);
-		} else {
-			interval = setInterval (() => {
-				i++;
-				if (window.WijitTestRunner) {
-					clearInterval (interval);
-					tester = new WijitTestRunner (tests, tag, this);
-					tester.useConsole = this.useConsole;
-					tester.onlyErrors = this.onlyErrors;
-					this.startTests (tests, tester);
-				} else if (i > 100) {
-					clearInterval (interval);
-					this.sendError (
-						'Could not instantiate WijitTestRunner',
-						'Could not instantiate WijitTestRunner',
-						null,
-						null,
-						'An instance of WijitTestRunner'
-					);
-				}
-			}, 1);
-		}
-
+	initTestRunner( tests, tag ) {
+		const tester = new WijitTestRunner( tests, tag, this );
+		tester.useConsole = self.useConsole;
+		tester.onlyErrors = self.onlyErrors;
+		this.startTests( tests, tester );
 		return tester;
 	}
 
@@ -905,7 +891,7 @@ export class WijitTester extends HTMLElement {
  	 * @param {Map<string, Set<Array<Function|string|number>>>} tests A map containing the extracted test definitions.
  	 * @param {WijitTestRunner} tester The instance of the `WijitTestRunner` to execute the tests.
  	 */
-	async startTests (tests, tester) {
+	async startTests( tests, tester ) {
 		for (const [key, items] of tests) {
 			for (const [func, predicted, line] of items) {
 				await this.pauseIfNeeded();
@@ -934,30 +920,33 @@ export class WijitTester extends HTMLElement {
  	 * @param {number} event.detail.idx The index of the test.
  	 * @param {number} event.detail.line (Optional) The line number where the test is defined.
  	 */
-	addResult (event) {
+	addResult( event ) {
 		const data = event.detail;
-		const verdict = data.verdict;
-		const currentContainer = this.shadowRoot.querySelector('#current');
-		const progress = this.shadowRoot.querySelector('progress');
 		const idx = data.idx;
+		if (!this.useConsole) {
+			const verdict = data.verdict;
+			const currentContainer = this.shadowRoot.querySelector('#current');
+			const progress = this.shadowRoot.querySelector('progress');
+			const output = this.shadowRoot.querySelector('output');
 
-		if (this.onlyErrors && verdict === 'pass') {
-			currentContainer.textContent = idx;
-			progress.value = idx;
-		} else {
-			const description = data.description;
-			const line = (data.line) ? ` | <b>Line:</b> ${data.line}` : '';
-			const template = `
-				<details>
-					<summary class="${verdict}"> ${idx} <b>${verdict}:</b> ${description} </summary>
-					<code>
-						\t<b>Result:</b> ${data.result} (${typeof data.result}) | <b>Expected:</b> ${data.expected} (${typeof data.expected}) ${line}
-					</code>
-				</details>
-			`;
-			this.output.insertAdjacentHTML('afterbegin', template);
-			currentContainer.textContent = idx;
-			progress.value = idx;
+			if (this.onlyErrors && verdict === 'pass') {
+				currentContainer.textContent = idx;
+				progress.value = idx;
+			} else {
+				const description = data.description;
+				const line = (data.line) ? ` | <b>Line:</b> ${data.line}` : '';
+				const template = `
+					<details>
+						<summary class="${verdict}"> ${idx} <b>${verdict}:</b> ${description} </summary>
+						<code>
+							\t<b>Result:</b> ${data.result} (${typeof data.result}) | <b>Expected:</b> ${data.expected} (${typeof data.expected}) ${line}
+						</code>
+					</details>
+				`;
+				output.insertAdjacentHTML('afterbegin', template);
+				currentContainer.textContent = idx;
+				progress.value = idx;
+			}
 		}
 
 		if (idx === this.totalTests) this.done();
@@ -968,10 +957,11 @@ export class WijitTester extends HTMLElement {
  	 *
  	 * @returns {Promise<void>} A promise that resolves when the pause is cancelled.
  	 */
-	async pauseIfNeeded () {
+	async pauseIfNeeded() {
 		if (this.paused) {
 			await new Promise (resolve => {
-				this.pauseBtn.addEventListener('click', resolve, { signal:this.abortController.signal });
+				const pauseBtn = this.shadowRoot.querySelector('#pause');
+				pauseBtn.addEventListener('click', resolve, { signal:this.abortController.signal });
 			});
 			this.paused = false;
 		}
@@ -981,12 +971,13 @@ export class WijitTester extends HTMLElement {
 	 * Sets this.paused to be the opposite of its current (true|false) value
 	 * and changes the text on the pause button
 	 */
-	pause () {
+	pause() {
+		const pauseBtn = this.shadowRoot.querySelector('#pause');
 		this.paused = !this.paused;
-		this.pauseBtn.classList.toggle ('active');
+		pauseBtn.classList.toggle ('active');
 	}
 
-	sendError (error, description, idx, line, expected) {
+	sendError( error, description, idx, line, expected ) {
 		const info = this.errorInfo;
 		info.verdict = 'ERROR';
 		info.result = error.toString();
@@ -1008,7 +999,7 @@ export class WijitTester extends HTMLElement {
  	 *
  	 * @test self.getLineNum(/^getLineNum/g, 'getLineNum', 'get line number: getLineNum') // 0
 	 */
-	getLineNum (regex, textToMatch, fullText) {
+	getLineNum( regex, textToMatch, fullText ) {
 		let line = 0;
 		const matches = fullText.matchAll (regex);
 		for (const match of matches) {
@@ -1031,7 +1022,7 @@ export class WijitTester extends HTMLElement {
 	 *
 	 * @test JSON.stringify (self.convertTime(123456789) ) // '{"hours":34,"minutes":17,"seconds":36,"milliseconds":789}'
 	 */
-	convertTime (milliseconds) {
+	convertTime( milliseconds ) {
 		return {
 			hours: Math.floor(milliseconds / 3600000),
 			minutes: Math.floor((milliseconds % 3600000) / 60000),
@@ -1046,14 +1037,16 @@ export class WijitTester extends HTMLElement {
  	 * This method calculates the elapsed time since the `startTime` was set and formats it into a human-readable string (hours:minutes:seconds:milliseconds).
  	 * It then updates the UI element with the formatted time.
  	 */
-	done () {
+	done() {
 		const total = this.convertTime(Date.now() - this.startTime);
 		const str = `${total.hours} : ${total.minutes} : ${total.seconds} : ${total.milliseconds}`;
 		const container = this.shadowRoot.querySelector('#time');
+		const pauseBtn = this.shadowRoot.querySelector('#pause');
+		const reloadBtn = this.shadowRoot.querySelector('#reload');
 		container.textContent = str;
 		this.abortController.abort();
-		this.reloadBtn.classList.remove('hidden');
-		this.pauseBtn.disabled = true;
+		reloadBtn.classList.remove('hidden');
+		pauseBtn.disabled = true;
 	}
 
 	/**
@@ -1061,19 +1054,19 @@ export class WijitTester extends HTMLElement {
  	 *
  	 * @returns {string} The path value.
  	 */
-	get path () { return this.#path; }
+	get file() { return this.#file; }
 
 	/**
 	 * Sets the value of the private `path` property
 	 * @param  {string} value The file path or url to a module
 	 */
-	set path (value) {
-		this.#path = value;
+	set file( value ) {
+		this.#file = value;
 	}
 
-	get lineNumbers () { return this.#lineNumbers; }
+	get lineNumbers() { return this.#lineNumbers; }
 
-	set lineNumbers (value) {
+	set lineNumbers( value ) {
 		switch (value) {
 		case false:
 		case 'false':
@@ -1091,13 +1084,13 @@ export class WijitTester extends HTMLElement {
 	 * Gets the value of the private `module` property
 	 * @return {string} - The name of the module
 	 */
-	get module () { return this.#module; }
+	get module() { return this.#module; }
 
 	/**
 	 * Sets the value of the private `module` property
 	 * @param  {string} - value The name of the module
 	 */
-	set module (value) {
+	set module( value ) {
 		this.#module = value;
 	}
 
@@ -1105,13 +1098,13 @@ export class WijitTester extends HTMLElement {
 	 * Gets the value of the private `tag` property
 	 * @return {string} - The name of the tag
 	 */
-	get tag () { return this.#tag; }
+	get tag() { return this.#tag; }
 
 	/**
 	 * Sets the value of the private `tag` property
 	 * @param  {string} value - The name of the custom tag associated with this.module (ie. my-customtag)
 	 */
-	set tag (value) {
+	set tag( value ) {
 		this.#tag = value;
 	}
 
@@ -1119,13 +1112,13 @@ export class WijitTester extends HTMLElement {
 	 * Gets the value of the private `stopOnError` property
 	 * @return {boolean}
 	 */
-	get stopOnError () { return this.#stopOnError; }
+	get stopOnError() { return this.#stopOnError; }
 
 	/**
 	 * Sets the private `stopOnError` property. If true, operations are paused when a test fails.
 	 * @param  {string | boolean} value - 'false' or false = false, anything else = true
 	 */
-	set stopOnError (value) {
+	set stopOnError( value ) {
 		switch (value) {
 		case 'false':
 		case false:
@@ -1143,14 +1136,14 @@ export class WijitTester extends HTMLElement {
 	 * Gets the value of the private `onlyErrors` property
 	 * @return {boolean}
 	 */
-	get onlyErrors () { return this.#onlyErrors; }
+	get onlyErrors() { return this.#onlyErrors; }
 
 	/**
 	 * Sets the value of the onlyErrors property. If true, only failed tests are shown.
 	 * @param  {string | boolean} value - 'false' or false = false, anything else = true
 	 * @return {[type]}       [description]
 	 */
-	set onlyErrors (value) {
+	set onlyErrors( value ) {
 		switch (value) {
 		case 'false':
 		case false:
@@ -1168,13 +1161,13 @@ export class WijitTester extends HTMLElement {
 	 * Gets the value of the property `useConsole`
 	 * @return {boolean}
 	 */
-	get useConsole () { return this.#useConsole; }
+	get useConsole() { return this.#useConsole; }
 
 	/**
 	 * Sets the value of the property `useConsole`. If true, test results will be logged using console.debug() instead of being output as HTML.
 	 * @param  {string | boolean} value - 'false' or false = false, anything else = true
 	 */
-	set useConsole (value) {
+	set useConsole(value) {
 		const progressContainer = this.shadowRoot.querySelector('#progress-container');
 		switch (value) {
 		case 'false':
@@ -1197,7 +1190,7 @@ document.addEventListener ('DOMContentLoaded', customElements.define('wijit-test
 /**
  * @class WijitTestRunner
  * @description A test runner for modules
- * @author Holmes Bryant <webbmaastaa@gmail.com>
+ * @author Holmes Bryant <https://github.com/HolmesBryant>
  * @license GPL-3.0
  */
 export class WijitTestRunner {
@@ -1246,6 +1239,14 @@ export class WijitTestRunner {
 	onlyErrors = true;
 
 	/**
+	 * Whether to reset the instance being tested on each test.
+	 *
+	 * @type {Boolean}
+	 * @default true
+	 */
+	reset = true;
+
+	/**
      * The sequential test number (starting from 1) for the current test run.
      *
      * @type {number}
@@ -1273,7 +1274,7 @@ export class WijitTestRunner {
 	 * @param  {string | object} tagNameOrModule 	- The (string) tag name associated with a web component or the (object) astual module to test
 	 * @param  {object} caller          			- The object that triggered the test. Defaults to the document object.
 	 */
-	constructor (tests, testSubject, caller = document) {
+	constructor ( tests, testSubject, caller = document ) {
 		this.tests = tests;
 		this.caller = caller;
 		this.testSubject = testSubject;
@@ -1288,7 +1289,7 @@ export class WijitTestRunner {
  	 * @param {string | Object} [instance=this.instance] - The initial instance to use. If not provided, defaults to the existing `this.instance`.
  	 * @throws {Error} If the provided `instance` is neither a string nor a module with a constructor.
  	 */
-	init (testSubject = this.testSubject) {
+	init ( testSubject = this.testSubject ) {
 		if (typeof testSubject === 'string') {
 			// instance is a tag name (custom element)
 			this.instance = this.setCustomElement (testSubject);
@@ -1319,13 +1320,12 @@ export class WijitTestRunner {
  	 * @returns {HTMLElement} 	- The created custom element instance.
  	 * @throws {Error} If the provided `tagName` is not found in the `customElements.registry`.
  	 */
-	setCustomElement (tagName) {
-		const existing = document.body.querySelector (`${tagName}#testing`);
-		const mod = customElements.get (tagName);
-		if (!mod) {
+	setCustomElement ( tagName ) {
+		const existing = document.body.querySelector ( `${tagName}` );
+		const mod = customElements.get( tagName );
+
+		if ( !mod ) {
 			const msg = `[ ${tagName} ] not found in customElementRegistry`
-			const evt = new CustomEvent(this.failEvent);
-			// this.caller.dispatchEvent(evt, {detail: msg});
 			this.sendError (
 				false,
 				msg,
@@ -1334,7 +1334,14 @@ export class WijitTestRunner {
 				"A Web Component or Custom Element instance"
 			);
 		} else {
-			return new mod();
+			if ( existing ) existing.remove();
+			if (document) {
+				const elem = document.createElement( tagName );
+				document.body.append( elem );
+				return elem;
+			} else {
+				return new mod();
+			}
 		}
 	}
 
@@ -1346,7 +1353,7 @@ export class WijitTestRunner {
  	 * @param {Map<string, Array<Object>> | Array<Array<Object>>} [tests=this.tests] 	- The tests to run. If not provided, all tests from the `this.tests` map are used.
  	 * @returns {string} (Optional) 	- The formatted total execution time string if `useConsole` is false.
  	 */
-	run (tests = this.tests) {
+	run ( tests = this.tests ) {
 		const startTime = Date.now();
 
 		for (const [key, items] of tests) {
@@ -1381,12 +1388,18 @@ export class WijitTestRunner {
  	 * @param {number} 		[line = null] 	- The line number where the test is defined (if available).
  	 * @param {boolean}		[reset = true] 	- Whether to initialize new instance of script between tests
  	 */
-	doTest(func, predicted, line = null, reset = true) {
-		if (reset) this.init ();
+	doTest( func, predicted, line = null ) {
+		let noreset = '';
+		if (func.indexOf('noreset') > -1  || !this.reset) {
+			func = func.replace('noreset', '').trim();
+			noreset = 'noreset ';
+		} else {
+			this.init ();
+		}
 
 		const self = this.instance;
 		let desc = func.toString().replace(/function anonymous[^\{]+\{(\s*return)?|\}$/g, '');
-		desc += ` //  ${predicted}`;
+		desc = noreset + desc + ` //  ${predicted}`;
 
 		this.getResult (func, desc, this.testNum, line)
 		.then (result => {
@@ -1439,7 +1452,7 @@ export class WijitTestRunner {
 	 * @param  {any} result 	- The result returned from a test function
 	 * @return {Promise}        - A (fulfilled) Promise.
 	 */
-	getResult (func, description, idx, line) {
+	getResult( func, description, idx, line ) {
 		let result;
 		const self = this.instance;
 		func = this.funFactory (func, idx, line, description);
@@ -1452,7 +1465,7 @@ export class WijitTestRunner {
 		return Promise.resolve(func(self));
 	}
 
-	getExpected (predicted, description, idx, line) {
+	getExpected( predicted, description, idx, line ) {
 		const self = this.instance;
 		const func = this.funFactory (predicted, idx, line, description);
 		try {
@@ -1462,7 +1475,7 @@ export class WijitTestRunner {
 		}
 	}
 
-	funFactory (str, i, line, expected) {
+	funFactory( str, i, line, expected ) {
 		let fn;
 		const regex = /\breturn\b/;
 		str = (regex.test(str)) ? str : 'return ' + str;
@@ -1474,7 +1487,7 @@ export class WijitTestRunner {
 		return fn;
 	}
 
-	sendError (errorOrResult, description, idx, line, expected) {
+	sendError( errorOrResult, description, idx, line, expected ) {
 		const info = this.testResults;
 		info.verdict = 'ERROR';
 		info.result = errorOrResult.toString();
@@ -1492,7 +1505,7 @@ export class WijitTestRunner {
 	 * @param  {number} milliseconds 	- The number of milliseconds
 	 * @return {object}              	- An object with the properties {hours, minutes, seconds, milliseconds}
 	 */
-	convertTime (milliseconds) {
+	convertTime( milliseconds ) {
 		return {
 			hours: Math.floor(milliseconds / 3600000),
 			minutes: Math.floor((milliseconds % 3600000) / 60000),

@@ -47,8 +47,8 @@ export class TestComponent extends HTMLElement {
 
 	/**
 	 * An async function
-	 * test self.asyncFunction () // 'testFunction_foo';
-	 * test self.asyncFunction () instanceof Promise // true
+	 * @test self.asyncFunction() // 'testFunction_foo'
+	 * @test self.asyncFunction() instanceof Promise // true
 	 */
 	async asyncFunction () {
 		const imports = await import ('./test-exports.js');
@@ -76,9 +76,9 @@ export class TestComponent extends HTMLElement {
 	 * @param  {String} arg A string
 	 * @return {String}     Should return 'testFunction_' + arg;
 	 *
-	 * @test self.testFunctionImport ('foo') // 'testFunction_foo'
+	 * @test self.importedFunction( 'foo' ) // 'testFunction_foo'
 	 */
-	testFunctionImport (arg) {
+	importedFunction (arg) {
 		return testFunction(arg);
 	}
 
@@ -198,9 +198,7 @@ export class TestComponent extends HTMLElement {
 	 * Sets the value of str
 	 * @param  {String} value A string
 	 *
-	 * @test self.str = 'bar';
-	   		 return self.str;
-	   		 // 'bar'
+	 * @test self.str = 'bar'; return self.str; // 'bar'
 	 */
 	set str (value) { this.#str = value; }
 
