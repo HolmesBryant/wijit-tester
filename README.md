@@ -57,7 +57,7 @@ You write your tests in docblock style comments in the code itself.
     export class MyElem extends HTMLElement {
       /**
        * Constructor
-       * @test self instanceOf MyElem // true
+       * @test self instanceof MyElem // true
        */
       constructor() {
         super();
@@ -117,7 +117,7 @@ By default, the test runner resets the instance you are testing between each tes
 In order to test async methods, you must return a self-executing async function which returns the result of your method.
 
 **Important**
-Results from async tests will not appear in the expected position of the list of results. Since async functions operate **asynchronously**, the execution of the other tests will continue until the async test completes its operation. As a result, the async test results will appear much later in the result que.
+Results from async tests will not appear in the expected position of the list of results. Since async functions operate **asynchronously**, the execution of the other tests will continue until the async test completes its operation. Consequently, the async test results will appear much later in the result que.
 
     /**
      * ...

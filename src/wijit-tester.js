@@ -79,6 +79,13 @@ export class WijitTester extends HTMLElement {
 	passEvent = 'testPassed';
 
 	/**
+	 * Name of custom event fired when full text of script is loaded. Only fires when "lineNumbers" is true.
+	 * @public
+	 * @type {String}
+	 */
+	scriptLoadEvent = 'scriptLoaded';
+
+	/**
      * (Private) Flag indicating if line numbers should be shown.
      *
      * @private
@@ -799,6 +806,8 @@ export class WijitTester extends HTMLElement {
 		try {
 			const response = await fetch (url);
 			this.fullCode = await response.text();
+			const evt = new CustomEvent(this.scriptLoadEvent, { detail:this.fullCode } );
+			document.dispatchEvent(evt);
 		} catch (error) {
 			this.sendError (
 				error,
