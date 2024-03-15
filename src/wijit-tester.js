@@ -602,7 +602,6 @@ export class WijitTester extends HTMLElement {
 		const fileInput = this.shadowRoot.querySelector( '#file-input' );
 		const moduleinput = this.shadowRoot.querySelector( '#module-input' );
 		const tagInput = this.shadowRoot.querySelector( '#tag-input' );
-		// const optionsContent = this.shadowRoot.querySelector( '#options' ).assignedNodes()[0].textContent.trim();
 		const optionsContent = this.textContent;
 		this.checkForSearchQuery();
 		this.setupOptions( optionsContent );
@@ -769,8 +768,17 @@ export class WijitTester extends HTMLElement {
 		const moduleName = event.target.module.value;
 		const component = await this.loadModule( this.file, moduleName );
 		const tests = this.getTests( component );
-		this.setup();
-		this.initTestRunner( tests, tag );
+
+		if ( tests.size === 0 ) {
+			try {
+				throw( 'No Tests Found' );
+			} catch (error) {
+				this.sendError( error, 'No tests were found', '', 0, '... some tests?' );
+			}
+		} else {
+			this.setup();
+			this.initTestRunner( tests, tag );
+		}
 	}
 
 	/**
