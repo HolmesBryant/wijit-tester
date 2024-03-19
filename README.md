@@ -6,6 +6,11 @@ A test runner for web components.
 
 More instructions will come ... eventually.
 
+## Features
+- Use as a web component or just import the WijitTestRunner class and use pure javascript.
+- When used as a web component, write your tests within jsdoc (docblock) style comments right in your code instead of writing seperate test scripts.
+
+
 This is a test runner and (optional) web component that tests web components. The tests are not written in a seperate file, but rather in docblock style comments in the code itself.
 
 **The component must be importable, meaning there must be an "export" statement before the component definition.**
@@ -111,6 +116,31 @@ By default, the test runner resets the instance you are testing between each tes
        * @test noreset self.#prop // 'baz'
        */
     }
+
+### Creating Mocks
+
+You can create a test (called a mock) that runs before each subsequent test is run. This is useful for setting some conditions that are common to all tests that follow the mock test so you don't have to recreate the conditions for every test. In order to add a mock test, add the word 'mock' after '@test'. The mock must include a return statement and end with a double slash (//).
+
+This mock will not appear in the test results unless it throws an error.
+
+If the mock is adding elements to the DOM, you must first check for the presence of the element before adding it. Since the mock runs before each test, a new element will be added each time a new test is run if you don't first check to see if it already exists.
+
+Note: The code associated with the mock will NOT run before any tests that appear before the mock statement, so if you want the code to run before every test, add the mock before you add any tests.
+
+    // Example mock test for a custom element
+    /**
+     * ....
+     * @test mock
+       let div = self.querySelector('#test-div');
+       if (div) {
+         return;
+       } else {
+         div = document.createElement('div');
+         div.id="test-div";
+         self.append(div);
+         return;
+       } //
+     */
 
 ### Async Methods
 

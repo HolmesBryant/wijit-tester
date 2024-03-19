@@ -1225,6 +1225,9 @@ export class WijitTestRunner {
    	 */
 	instance;
 
+	mocks = new Set();
+	addIdx = true;
+
 	/**
    	 * Timestamp of when the test run started.
    	 *
@@ -1392,6 +1395,10 @@ export class WijitTestRunner {
 		}
 	}
 
+	setMock( func, predicted, line ) {
+		this.mocks.add( [func, predicted, line] );
+	}
+
 	/**
  	 * Executes a single test and reports the results.
  	 *
@@ -1400,19 +1407,35 @@ export class WijitTestRunner {
  	 * Depending on the `useConsole` property and verdict, it either logs the result to the console or dispatches custom events to the caller (`testfailed` for failures, `testcompleted` for a completed test).
  	 * Finally, it increments the test number and optionally logs the elapsed time since the start of the test run.
  	 *
- 	 * @param {function} 	func 			- The test function to execute.
+ 	 * @param {function} 	func 				- The test function to execute.
  	 * @param {any} 		predicted 		- The expected result of the test.
- 	 * @param {number} 		[line = null] 	- The line number where the test is defined (if available).
- 	 * @param {boolean}		[reset = true] 	- Whether to initialize new instance of script between tests
+ 	 * @param {number} 	[line = null] - The line number where the test is defined (if available).
  	 */
 	doTest( func, predicted, line = null ) {
 		let noreset = '';
+
+		if (func.indexOf('mock') > -1) {
+			func = func.replace('mock', '').trim();
+			this.setMock(func, predicted, line);
+			return;
+		}
+
 		if (func.indexOf('noreset') > -1  || !this.reset) {
 			func = func.replace('noreset', '').trim();
 			noreset = 'noreset ';
 		} else {
 			this.init ();
+			if (this.mocks.size > 0) {
+				const entries = this.mocks.values();
+				const entry = entries.next().value;
+				this.getResult(entry[0], `Mock: ${entry[0]}`, this.testNum, entry[2])
+				.then (result => {
+					if (this.addIdx) this.testNum++;
+					this.addIdx = false;
+				});
+			}
 		}
+
 
 		const self = this.instance;
 		let desc = func.toString().replace(/function anonymous[^\{]+\{(\s*return)?|\}$/g, '');
