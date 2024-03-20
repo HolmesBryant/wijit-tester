@@ -3,15 +3,17 @@
 A test runner for web components.
 
 ## Work in Progress!!
+More documentation will come ... eventually.
 
-More instructions will come ... eventually.
+This is a test runner and (optional) web component that tests web components. The tests are not written in a seperate file, but rather in docblock style comments in the code itself.
+
 
 ## Features
 - Use as a web component or just import the WijitTestRunner class and use pure javascript.
-- When used as a web component, write your tests within jsdoc (docblock) style comments right in your code instead of writing seperate test scripts.
-
-
-This is a test runner and (optional) web component that tests web components. The tests are not written in a seperate file, but rather in docblock style comments in the code itself.
+- When used as a web component, write your tests within jsdoc or docblock style comments right in your code instead of writing seperate test scripts.
+- Can handle form submissions
+- Can hdndle async functions and methods
+- Can handle slotchange events
 
 **The component must be importable, meaning there must be an "export" statement before the component definition.**
 
@@ -21,7 +23,6 @@ This is a test runner and (optional) web component that tests web components. Th
     }
 
 ## Setup
-Setup is minimal.
 - Create an HTML file.
 - Import the "wijit-tester" script.
 - Add a `<wijit-tester>` tag with some attributes.
@@ -84,6 +85,15 @@ You write your tests in docblock style comments in the code itself.
 
 ## Notes
 
+### Errors
+
+Errors occur when there is a problem parsing a test. This usually means there is some problem with the code in the test itself. Some common mistakes are:
+ - A line of a milti-line test begins with an asterix ("\*").
+ - A multi-line test doesn't have a return statement.
+ - The test uses "this" instead of "self".
+
+If you are having trouble tracking down an error, check the console. Traces in the console will tell you if the error is being thrown from the test script or the script being tested.
+
 ### Miltiline Tests
 
 If your test expression is rather long, you may distribute it over several lines as long as there are no erroneous characters at the start of each line.
@@ -125,7 +135,7 @@ This mock will not appear in the test results unless it throws an error.
 
 If the mock is adding elements to the DOM, you must first check for the presence of the element before adding it. Since the mock runs before each test, a new element will be added each time a new test is run if you don't first check to see if it already exists.
 
-Note: The code associated with the mock will NOT run before any tests that appear before the mock statement, so if you want the code to run before every test, add the mock before you add any tests.
+Note: The code associated with the mock will NOT run before any tests that appear **before** the mock statement, so if you want the code to run before every test, add the mock before you add any tests.
 
     // Example mock test for a custom element
     /**
@@ -180,3 +190,4 @@ Results from async tests will not appear in the expected position of the list of
     		});
     	}
     }
+
