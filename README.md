@@ -87,9 +87,9 @@ You write your tests in docblock style comments in the code itself.
 
 ### Errors
 
-Errors occur when there is a problem parsing a test. This usually means there is some problem with the code in the test itself. Some common mistakes are:
- - A line of a milti-line test begins with an asterix ("\*").
- - A multi-line test doesn't have a return statement.
+Errors occur when there is a problem parsing a test. This usually means there is some error in the code in the test itself. Some common mistakes are:
+ - A line of a milti-line test begins with an asterix ("\*") or some other erroneous character.
+ - A multi-statement test doesn't include a return statement.
  - The test uses "this" instead of "self".
 
 If you are having trouble tracking down an error, check the console. Traces in the console will tell you if the error is being thrown from the test script or the script being tested.
@@ -152,23 +152,40 @@ Note: The code associated with the mock will NOT run before any tests that appea
        } //
      */
 
-### Async Methods
+### Async Functions
 
-In order to test async methods, you must return a self-executing async function which returns the result of your method.
-
-**Important**
-Results from async tests will not appear in the expected position of the list of results. Since async functions operate **asynchronously**, the execution of the other tests will continue until the async test completes its operation. Consequently, the async test results will appear much later in the result que.
+In order to test async functions, you must return a self-executing async function which returns the result of your function.
 
     /**
      * ...
      * @test return async function() {
-     	  return await self.fetchFile( '/path/to/file.txt' );
+     	  return await self.fetchFile( 'file.txt' );
      	  }( self )  // 'the result'
      */
     async fetchFile( url ) {
     	const response = await fetch( url );
     	return await response.text();
     }
+
+**Note**
+Results from async tests will not appear in the expected position of the list of results. Since async functions operate **asynchronously**, the execution of the other tests will continue until the async test completes its operation. Consequently, the async test results will appear much later in the result que.
+
+#### Catching Errors in Async Tests
+
+The test runner cannot catch errors that occur within the code of an asyncronous test. If you wish to catch such errors and (optionally) show them in the test results display, you must add your own try...catch block.
+
+    /**
+     * ....
+     * @test return async function() {
+          try {
+            const response = await self.fetchData( 'file.txt' );
+            some faulty code
+          } catch (error) {
+            const line_number_of_test_in_code = 1234;
+            self.WijitTestRunner.sendError(error, line_number_of_test_in_code)
+          }
+        }( self )  // 'the result'
+     */
 
  ### Slot Change Events
 

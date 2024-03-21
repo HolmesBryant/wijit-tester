@@ -950,16 +950,16 @@ export class WijitTester extends HTMLElement {
 				currentContainer.textContent = idx;
 				progress.value = idx;
 			} else {
-				const description = data.description;
 				const line = (data.line) ? ` | <b>Line:</b> ${data.line}` : '';
 				const template = `
 					<details>
-						<summary class="${verdict}"> ${idx} <b>${verdict}:</b> ${description} </summary>
+						<summary class="${verdict}"> ${idx} <b>${verdict}:</b> <br>${data.description} </summary>
 						<code>
 							\t<b>Result:</b> ${data.result} (${typeof data.result}) | <b>Expected:</b> ${data.expected} (${typeof data.expected}) ${line}
 						</code>
 					</details>
 				`;
+
 				output.insertAdjacentHTML('afterbegin', template);
 				currentContainer.textContent = idx;
 				progress.value = idx;
@@ -1436,8 +1436,8 @@ export class WijitTestRunner {
 			}
 		}
 
-
 		const self = this.instance;
+		self.WijitTestRunner = this;
 		let desc = func.toString().replace(/function anonymous[^\{]+\{(\s*return)?|\}$/g, '');
 		desc = noreset + desc + ` //  ${predicted}`;
 
@@ -1516,24 +1516,22 @@ export class WijitTestRunner {
 	}
 
 	funFactory( str, i, line, expected ) {
-		let fn;
 		const regex = /\breturn\b/;
 		str = (regex.test(str)) ? str : 'return ' + str;
 		try {
-			fn = Function ('self', str);
+			return Function ('self', str);
 		} catch (error) {
 			this.sendError (error, str, i, line, expected)
 		}
-		return fn;
 	}
 
-	sendError( errorOrResult, description, idx, line, expected ) {
+	sendError( errorOrResult, line, expected = '...', description, idx ) {
 		const info = this.testResults;
 		info.verdict = 'ERROR';
 		info.result = errorOrResult.toString();
 		info.expected = expected || info.expected;
-		info.idx = idx;
-		info.line = line + 5;
+		info.idx = idx || this.testNum;
+		info.line = line;
 		info.description = description;
 		const evt = new CustomEvent(this.errorEvent, { detail: info });
 		this.caller.dispatchEvent(evt);
