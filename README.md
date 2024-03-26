@@ -200,7 +200,7 @@ The test runner cannot catch errors that occur within the code of an asyncronous
    		 * @test noreset self.#text // 'baz'
        */
     	connectedCallback() {
- 				const slot = this.shadowRoot.querySelector( 'slot' );
+ 			const slot = this.shadowRoot.querySelector( 'slot' );
     		slot.addEventListener( 'slotchange', event => {
       		const nodes = slot.assignedNodes();
       		if ( nodes[0] ) this.#text = nodes[0].textContent;
